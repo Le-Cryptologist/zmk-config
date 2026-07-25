@@ -26,6 +26,8 @@ manifest:
       url-base: https://github.com/urob
     - name: zmkfirmware
       url-base: https://github.com/zmkfirmware
+    - name: englmaxi
+      url-base: https://github.com/englmaxi
 
   projects:
     - name: zmk
@@ -43,6 +45,13 @@ manifest:
       path: modules/zmk/leader-key
     - name: zmk-tri-state
       path: modules/zmk/tri-state
+
+    # Dongle OLED screen (battery / layer / modifiers / bongo cat).
+    # v0.3 to match our ZMK pin of v0.2 (module docs: use v0.3 for zmk <= v0.3).
+    - name: zmk-dongle-display
+      remote: englmaxi
+      revision: v0.3
+      path: modules/zmk/dongle-display
 
     # Temporarily overload Zephyr until
     # https://github.com/zmkfirmware/zephyr/pull/40 is merged.
