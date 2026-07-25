@@ -1,44 +1,44 @@
-layout: {zmk_keyboard: totem}
+layout: {qmk_keyboard: totem}
 layers:
   Base:
   - Q
   - W
-  - E
-  - R
-  - T
-  - Y
-  - U
-  - I
-  - O
+  - F
   - P
-  - {t: A, h: LEFT WIN}
-  - {t: S, h: LEFT ALT}
-  - {t: D, h: Ctrl}
-  - {t: F, h: LEFT SHIFT}
+  - B
+  - J
+  - L
+  - U
+  - Y
+  - ''''
+  - {t: A, h: Ctrl}
+  - {t: R, h: Alt}
+  - {t: S, h: LSHIFT}
+  - {t: T, h: Gui}
   - G
-  - H
-  - {t: J, h: LEFT SHIFT}
-  - {t: K, h: LEFT CONTROL}
-  - {t: L, h: LEFT ALT}
-  - {t: '''', h: LEFT WIN}
-  - Gaming
+  - M
+  - {t: N, h: Gui}
+  - {t: E, h: LSHIFT}
+  - {t: I, h: Alt}
+  - {t: O, h: Ctrl}
+  - {t: Esc, h: Hyper}
   - Z
   - X
   - C
+  - D
   - V
-  - B
-  - N
-  - M
+  - K
+  - H
   - {t: ',', s: ;}
   - {t: ., s: ':'}
   - {t: '!', s: '?'}
-  - Gaming
-  - {type: trans}
-  - {t: Tab, h: Nav}
-  - {t: Spc, h: Sym}
-  - {t: ENTER, h: Num}
-  - {t: Magic, h: Shift}
-  - {type: trans}
+  - Fn
+  - Bspc
+  - Spc
+  - {t: Alt+→, h: Nav}
+  - {t: Tab, h: Sym}
+  - ENTER
+  - {t: Numword, h: Num, s: Sticky Num}
   Sym:
   - {type: trans}
   - '@'
@@ -74,49 +74,49 @@ layers:
   - {type: trans}
   - {type: trans}
   - {type: trans}
-  - {type: held}
-  - BACKSPACE
+  - {type: trans}
+  - {t: BACKSPACE, type: held}
   - Del
   - {type: trans}
   Num:
+  - '['
   - '1'
   - '2'
   - '3'
+  - ']'
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - '-'
   - '4'
   - '5'
   - '6'
+  - '='
+  - {type: trans}
+  - {t: Gui, h: sticky}
+  - {t: LSHIFT, h: sticky}
+  - {t: Alt, h: sticky}
+  - {t: Ctrl, h: sticky}
+  - {type: trans}
+  - \
   - '7'
   - '8'
   - '9'
-  - '0'
-  - Gui
-  - Alt
-  - Ctrl
-  - Shift
-  - F11
-  - F12
-  - LSHIFT
-  - Ctrl
-  - Alt
-  - Gui
+  - KP SLASH
   - {type: trans}
-  - F1
-  - F2
-  - F3
-  - F4
-  - F5
-  - F6
-  - F7
-  - F8
-  - F9
-  - F10
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - '0'
   - {type: trans}
   - {type: trans}
   - {type: trans}
   - {type: trans}
   - {type: held}
-  - {type: trans}
-  - {type: trans}
   Nav:
   - Next Win
   - $$mdi:skip-backward$$
@@ -139,10 +139,10 @@ layers:
   - →
   - {type: trans}
   - {type: trans}
-  - Ctl+Z
-  - Cut
-  - Copy
-  - Ctl+V
+  - Gui+Z
+  - Gui+X
+  - Gui+C
+  - Gui+V
   - $$mdi:volume-off$$
   - Scroll ←
   - Scroll ↓
@@ -151,77 +151,153 @@ layers:
   - {type: trans}
   - {type: trans}
   - {type: trans}
-  - {type: held}
   - {type: trans}
+  - {type: held}
   - BACKSPACE
   - DELETE
   - {type: trans}
-  Gaming:
-  - Tab
-  - Q
-  - W
-  - E
-  - R
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - Shift
-  - A
-  - S
-  - D
-  - F
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - Ctrl
-  - Z
-  - X
-  - C
-  - V
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - GamingNum
-  - Spc
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  GamingNum:
-  - Next Win
+  Bridge:
   - '1'
   - '2'
   - '3'
-  - T
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - {type: trans}
-  - Esc
   - '4'
   - '5'
   - '6'
-  - G
+  - '7'
+  - '8'
+  - '9'
+  - '0'
   - {type: trans}
   - {type: trans}
   - {type: trans}
   - {type: trans}
   - {type: trans}
   - {type: trans}
-  - LEFT ALT
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  Mouse:
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - PgUp
+  - Mouse ↑
+  - PgDn
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - Scroll ←
+  - Mouse ←
+  - Mouse ↓
+  - Mouse →
+  - Scroll →
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - Left Click
+  - Middle Click
+  - Right Click
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - Scroll ↑
+  - Scroll ↓
+  - {type: trans}
+  Hyper:
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - ←
+  - ↓
+  - ↑
+  - →
+  - {type: held}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  Fn:
   - F1
   - F2
   - F3
-  - B
+  - F4
+  - F5
+  - F6
+  - F7
+  - F8
+  - F9
+  - F10
+  - F11
+  - F12
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
+  - {type: trans}
   - {type: trans}
   - {type: trans}
   - {type: trans}
@@ -234,3 +310,107 @@ layers:
   - {type: trans}
   - {type: trans}
   - {type: trans}
+  - {type: trans}
+  - {type: trans}
+combos:
+- p: [0, 1]
+  k: {t: Bridge, h: toggle}
+  l: [Base, Nav, Num, Bridge]
+- p: [1, 2]
+  k: Esc
+  l: [Base, Nav, Num]
+- p: [2, 3]
+  k: Smart Mouse
+  l: [Base, Nav, Num]
+- p: [11, 12]
+  k: {t: Tab, h: Sft+Alt}
+  l: [Base, Nav, Num]
+- p: [22, 24]
+  k: Gui+X
+  l: [Base, Nav, Num]
+  a: bottom
+  o: 0.15
+- p: [22, 23]
+  k: Gui+C
+  l: [Base, Nav, Num]
+- p: [23, 24]
+  k: Gui+V
+  l: [Base, Nav, Num]
+- p: [6, 7]
+  k: Bspc
+  l: [Base, Nav, Num]
+- p: [7, 8]
+  k: Del
+  l: [Base, Nav, Num]
+- p: [16, 17]
+  k: {t: (, h: Sft+Gui, s: <}
+  l: [Base, Num]
+- p: [17, 18]
+  k: {t: ), h: Sft+Alt, s: '>'}
+  l: [Base, Num]
+- p: [16, 17]
+  k: <
+  l: [Nav]
+- p: [17, 18]
+  k: '>'
+  l: [Nav]
+- p: [27, 28]
+  k: '['
+  l: [Base, Num]
+- p: [28, 29]
+  k: ']'
+  l: [Base, Num]
+- p: [27, 28]
+  k: '{'
+  l: [Nav]
+- p: [28, 29]
+  k: '}'
+  l: [Nav]
+- p: [1, 11]
+  k: '@'
+  l: [Base, Nav, Num]
+- p: [2, 12]
+  k: '#'
+  l: [Base, Nav, Num]
+- p: [3, 13]
+  k: $
+  l: [Base, Nav, Num]
+- p: [4, 14]
+  k: '%'
+  l: [Base, Nav, Num]
+- p: [11, 22]
+  k: '`'
+  l: [Base, Nav, Num]
+- p: [12, 23]
+  k: \
+  l: [Base, Nav, Num]
+- p: [13, 24]
+  k: '='
+  l: [Base, Nav, Num]
+- p: [14, 25]
+  k: '~'
+  l: [Base, Nav, Num]
+- p: [5, 15]
+  k: ^
+  l: [Base, Nav, Num]
+- p: [6, 16]
+  k: +
+  l: [Base, Nav, Num]
+- p: [7, 17]
+  k: '*'
+  l: [Base, Nav, Num]
+- p: [8, 18]
+  k: '&'
+  l: [Base, Nav, Num]
+- p: [15, 26]
+  k: _
+  l: [Base, Nav, Num]
+- p: [16, 27]
+  k: '-'
+  l: [Base, Nav, Num]
+- p: [17, 28]
+  k: /
+  l: [Base, Nav, Num]
+- p: [18, 29]
+  k: '|'
+  l: [Base, Nav, Num]

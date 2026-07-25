@@ -1,6 +1,7 @@
 parse_config:
   zmk_additional_includes:
     - "modules/zmk/helpers/include"
+    - "config"
 
   zmk_preamble: |
     #include <zmk-helpers/key-labels/totem.h>
