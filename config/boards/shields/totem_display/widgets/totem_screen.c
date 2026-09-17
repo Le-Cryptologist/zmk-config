@@ -831,7 +831,6 @@ static void handle_key(const struct zmk_keycode_state_changed *ev) {
             view.mods &= ~bit;
         }
         mods_changed(now);
-        render();
         return;
     }
 
@@ -848,7 +847,6 @@ static void handle_key(const struct zmk_keycode_state_changed *ev) {
     } else {
         add_key(mods, page, usage, now);
     }
-    render();
 }
 
 /* ================================================================ events */
@@ -860,13 +858,26 @@ struct screen_event {
     bool recording, listening;
 };
 
-static void screen_update_cb(struct screen_event ev) {
+/* A key press and its release are two events a few milliseconds apart, and fast
+   typing stacks more on top of them. ZMK's ZMK_DISPLAY_WIDGET_LISTENER keeps a
+   single slot for the state waiting to be drawn, so an event arriving before the
+   display thread has run overwrites the one sitting there — and as the release
+   lands last, the press is what gets thrown away. Typed slowly, the display
+   drains in between and the character appears; typed at any speed, most of the
+   line never reaches the screen. So events go into a queue here, and the display
+   thread drains all of it before drawing once. (The recorder has its own
+   listener, synchronous and lossless, so the log was never affected by this.) */
+#define SCREEN_QUEUE 32
+
+K_MSGQ_DEFINE(screen_q, sizeof(struct screen_event), SCREEN_QUEUE, 8);
+
+static void apply(const struct screen_event *ev) {
     uint32_t now = k_uptime_get_32();
 
-    switch (ev.kind) {
+    switch (ev->kind) {
     case 1:
-        handle_key(&ev.key);
-        return;
+        handle_key(&ev->key);
+        break;
     case 2: {
         zmk_keymap_layer_index_t index = zmk_keymap_highest_layer_active();
         const char *name = zmk_keymap_layer_name(zmk_keymap_layer_index_to_id(index));
@@ -884,23 +895,39 @@ static void screen_update_cb(struct screen_event ev) {
         break;
     }
     case 3:
-        if (ev.source < 2) {
-            view.bat[ev.source] = ev.level;
+        if (ev->source < 2) {
+            view.bat[ev->source] = ev->level;
         }
         break;
     case 4:
-        view.recording = ev.recording;
-        view.listening = ev.listening;
+        view.recording = ev->recording;
+        view.listening = ev->listening;
         touch(now);
         break;
     default:
-        return;
+        break;
     }
-
-    render();
 }
 
-static struct screen_event screen_get_state(const zmk_event_t *eh) {
+/* Runs on the display queue, so `view` is only ever touched from this one
+   thread and needs no lock of its own. */
+static void screen_work_cb(struct k_work *work) {
+    struct screen_event ev;
+    bool any = false;
+
+    while (k_msgq_get(&screen_q, &ev, K_NO_WAIT) == 0) {
+        apply(&ev);
+        any = true;
+    }
+
+    if (any) {
+        render();
+    }
+}
+
+K_WORK_DEFINE(screen_work, screen_work_cb);
+
+static struct screen_event capture(const zmk_event_t *eh) {
     struct screen_event out = {0};
     const struct zmk_keycode_state_changed *kc = as_zmk_keycode_state_changed(eh);
     const struct zmk_peripheral_battery_state_changed *bat =
@@ -934,8 +961,31 @@ static struct screen_event screen_get_state(const zmk_event_t *eh) {
     return out;
 }
 
-ZMK_DISPLAY_WIDGET_LISTENER(widget_totem_screen, struct screen_event, screen_update_cb,
-                            screen_get_state)
+static int screen_listener(const zmk_event_t *eh) {
+    struct screen_event ev;
+
+    if (!zmk_display_is_initialized()) {
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+
+    ev = capture(eh);
+
+    /* The queue is sized so this never has to give anything up. If it ever does
+       fill, what just happened matters more than what happened thirty events
+       ago, so drop from the old end to make room. */
+    while (k_msgq_put(&screen_q, &ev, K_NO_WAIT) != 0) {
+        struct screen_event stale;
+
+        if (k_msgq_get(&screen_q, &stale, K_NO_WAIT) != 0) {
+            break;
+        }
+    }
+
+    k_work_submit_to_queue(zmk_display_work_q(), &screen_work);
+    return ZMK_EV_EVENT_BUBBLE;
+}
+
+ZMK_LISTENER(widget_totem_screen, screen_listener);
 
 ZMK_SUBSCRIPTION(widget_totem_screen, zmk_keycode_state_changed);
 ZMK_SUBSCRIPTION(widget_totem_screen, zmk_layer_state_changed);
@@ -975,7 +1025,14 @@ int zmk_widget_totem_screen_init(struct zmk_widget_totem_screen *widget, lv_obj_
     lv_timer_create(tick_cb, 33, NULL);
 
     sys_slist_append(&widgets, &widget->node);
-    widget_totem_screen_init();
+
+    /* Pick up whichever layer is already active and draw the first frame. This
+       stands in for the init function ZMK_DISPLAY_WIDGET_LISTENER used to
+       generate, which fetched its first state by passing a NULL event. */
+    struct screen_event first = {.kind = 2};
+
+    apply(&first);
+    render();
 
     return 0;
 }
