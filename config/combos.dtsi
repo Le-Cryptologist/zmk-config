@@ -7,63 +7,125 @@
   ╰───────╮ LH2 LH1 LH0 │ │ RH0 RH1 RH2 ╭───────╯
           ╰─────────────╯ ╰─────────────╯ */
 
-#define COMBO_TERM_FAST 18
-#define COMBO_TERM_SLOW 30
+/* Timing tiers. Two numbers per combo: how close together the two keys have to
+   land, and how long the board must have been idle beforehand.
+
+   The idle guard is what stops combos firing inside a word — at any real typing
+   speed the previous keystroke is well under 150 ms old, so a combo simply isn't
+   armed mid-word. That in turn is what lets the press window be generous.
+
+   v7 raised both press windows. 18 ms was tighter than two fingers can reliably
+   manage on purpose; it was the main reason combos "missed" and typed their two
+   letters instead. 30 ms is still far below a rolled bigram.
+
+   The EDIT tier exists for keys you reach for the instant you notice a mistake,
+   where the idle guard is precisely wrong: it was disarming the combo in the one
+   moment you wanted it. Those get no idle guard at all, which is only safe on a
+   key pair that is not an English bigram. */
+#define COMBO_TERM_FAST 30   // adjacent keys, different fingers
+#define COMBO_TERM_SLOW 45   // stacked keys, same finger — needs more travel
+#define COMBO_TERM_EDIT 45   // editing keys, pressed deliberately
+#define COMBO_TERM_THMB 40   // both thumbs at once
 
 #define COMBO_IDLE_FAST 150
 #define COMBO_IDLE_SLOW 50
+#define COMBO_IDLE_NONE 0
+
+/* ── Layer scope ─────────────────────────────────────────────────────────────
+   v7: combos are BASE-only unless there is a reason otherwise.
+
+   They used to be live on the Nav and Num layers too, which was a quiet source
+   of misfires: on Nav the left hand is now arrows, so a two-arrow press fired
+   Tab or Enter, and on Num the left hand is the number pad, so typing two digits
+   in a row fired a symbol combo. The right-hand symbol combos stay live on Num
+   because you genuinely want plus and minus while typing figures. */
 
 /* Horizontal combos - left hand */
-ZMK_COMBO(bridge, &tog BRIDGE, LT4 LT3,  BASE NAV NUM BRIDGE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(esc,    &kp ESC,     LT3 LT2,  BASE NAV NUM,        COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(mouse,  &smart_mouse, LT2 LT1, BASE NAV NUM,        COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(bridge, &tog BRIDGE, LT4 LT3,  BASE BRIDGE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(undo,   &undo_redo,  LT3 LT2,  BASE,        COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(mouse,  &smart_mouse, LT2 LT1, BASE,        COMBO_TERM_FAST, COMBO_IDLE_FAST)
 
 // Combos that sit on top of home-row mods are themselves hold-taps, so that
 // holding the pair gives you the two modifiers instead of a misfire.
 // (urob's trick, ZMK issue #544.) Mods below match Jacob's own HRM order.
-ZMK_COMBO(tab,   &hml LS(LALT) TAB, LM3 LM2, BASE NAV NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(tab,   &hml LS(LALT) TAB, LM3 LM2, BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(ret,   &hml LS(LGUI) RET, LM2 LM1, BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
 
-// NOTE: the S+T pair, and the R+S+T triple, are deliberately LEFT FREE —
-// reserved for the Leader key and Shift+Leader when that lands. Do not write
-// their key labels in this comment: the build script counts labels in this
-// file to size the combo slots, and would over-allocate.
+// NOTE: the R+S+T triple is deliberately LEFT FREE — reserved for the Leader
+// key when that lands. Do not write its key labels in this comment: the build
+// script counts labels in this file to size the combo slots, and would
+// over-allocate.
 
-ZMK_COMBO(cut,   &kp LG(X),    LB3 LB1,  BASE NAV NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(copy,  &kp LG(C),    LB3 LB2,  BASE NAV NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(paste, &kp LG(V),    LB2 LB1,  BASE NAV NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+/* Voice typing — both are flat-index presses on purpose: deliberate, hard to
+   misfire mid-word. Home row pair = built-in dictation (the instant one, for
+   short bursts); bottom row pair = MacWhisper (long-form, arrives after a
+   delay). The pair overlapping the Cmd home-row mod is a hold-tap, same trick
+   as the other combos on mod keys, so holding it still gives Cmd. */
+ZMK_COMBO(dictate, &dictate_mac, LM1 LM0, BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST, LGUI, KEYS_R)
+ZMK_COMBO(whisper, &kp F17,      LB1 LB0, BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+
+ZMK_COMBO(cut,   &kp LG(X),    LB3 LB1,  BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(copy,  &kp LG(C),    LB3 LB2,  BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(paste, &kp LG(V),    LB2 LB1,  BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+
+/* ── Backspace and Delete ────────────────────────────────────────────────────
+   Backspace moved one column right in v7. On its old pair the two letters are a
+   common English bigram in both directions, so it had to carry a 150 ms idle
+   guard to avoid eating them — which meant the combo was dead for the first
+   150 ms after any keystroke, i.e. exactly when you spot a typo and reach for
+   it. Hence "it types the two letters instead".
+
+   The new pair is a letter combination that essentially does not occur in
+   English, so it needs no idle guard and works the instant you want it, with a
+   generous press window on top. Delete keeps the old conservative timing — it is
+   never urgent, and its pair does occur in real words. */
+ZMK_COMBO(bspc,  &kp BSPC,     RT2 RT3,  BASE NUM, COMBO_TERM_EDIT, COMBO_IDLE_NONE)
+ZMK_COMBO(del,   &kp DEL,      RT3 RT4,  BASE NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
 
 /* Horizontal combos - right hand */
-ZMK_COMBO(bspc,  &kp BSPC,     RT1 RT2,  BASE NAV NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(del,   &kp DEL,      RT2 RT3,  BASE NAV NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(lpar,  &lpar_lt,     RM1 RM2,  BASE NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST, LS(LGUI), KEYS_L)
+ZMK_COMBO(rpar,  &rpar_gt,     RM2 RM3,  BASE NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST, LS(LALT), KEYS_L)
 
-ZMK_COMBO(lpar,  &lpar_lt,     RM1 RM2,  BASE     NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST, LS(LGUI), KEYS_L)
-ZMK_COMBO(rpar,  &rpar_gt,     RM2 RM3,  BASE     NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST, LS(LALT), KEYS_L)
-ZMK_COMBO(lt,    &kp LT,       RM1 RM2,       NAV    , COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(gt,    &kp GT,       RM2 RM3,       NAV    , COMBO_TERM_FAST, COMBO_IDLE_FAST)
-
-ZMK_COMBO(lbkt,  &kp LBKT,     RB1 RB2,  BASE     NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(rbkt,  &kp RBKT,     RB2 RB3,  BASE     NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(lbrc,  &kp LBRC,     RB1 RB2,       NAV    , COMBO_TERM_FAST, COMBO_IDLE_FAST)
-ZMK_COMBO(rbrc,  &kp RBRC,     RB2 RB3,       NAV    , COMBO_TERM_FAST, COMBO_IDLE_FAST)
+// Brackets are mod-morphs now: tap for square, shift for curly. They used to be
+// two extra combos scoped to Nav only, which sat directly on Nav's arrow keys.
+ZMK_COMBO(lbkt,  &lbkt_lbrc,   RB1 RB2,  BASE NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+ZMK_COMBO(rbkt,  &rbkt_rbrc,   RB2 RB3,  BASE NUM, COMBO_TERM_FAST, COMBO_IDLE_FAST)
 
 /* Vertical combos - left hand */
-ZMK_COMBO(at,    &kp AT,       LT3 LM3,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(hash,  &kp HASH,     LT2 LM2,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(dllr,  &kp DLLR,     LT1 LM1,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(prcnt, &kp PRCNT,    LT0 LM0,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(at,    &kp AT,       LT3 LM3,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(hash,  &kp HASH,     LT2 LM2,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(dllr,  &kp DLLR,     LT1 LM1,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(prcnt, &kp PRCNT,    LT0 LM0,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
 
-ZMK_COMBO(grave, &kp GRAVE,    LM3 LB3,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(bslh,  &kp BSLH,     LM2 LB2,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(equal, &kp EQUAL,    LM1 LB1,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(tilde, &kp TILDE,    LM0 LB0,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(grave, &kp GRAVE,    LM3 LB3,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(bslh,  &kp BSLH,     LM2 LB2,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(equal, &kp EQUAL,    LM1 LB1,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(tilde, &kp TILDE,    LM0 LB0,  BASE, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
 
 /* Vertical combos - right hand */
-ZMK_COMBO(caret, &kp CARET,    RT0 RM0,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(plus,  &kp PLUS,     RT1 RM1,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(star,  &kp STAR,     RT2 RM2,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(amps,  &kp AMPS,     RT3 RM3,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(caret, &kp CARET,    RT0 RM0,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(plus,  &kp PLUS,     RT1 RM1,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(star,  &kp STAR,     RT2 RM2,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(amps,  &kp AMPS,     RT3 RM3,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
 
-ZMK_COMBO(under, &kp UNDER,    RM0 RB0,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(minus, &kp MINUS,    RM1 RB1,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(fslh,  &kp FSLH,     RM2 RB2,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
-ZMK_COMBO(pipe,  &kp PIPE,     RM3 RB3,  BASE NAV NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(under, &kp UNDER,    RM0 RB0,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(minus, &kp MINUS,    RM1 RB1,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(fslh,  &kp FSLH,     RM2 RB2,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+ZMK_COMBO(pipe,  &kp PIPE,     RM3 RB3,  BASE NUM, COMBO_TERM_SLOW, COMBO_IDLE_SLOW)
+
+/* ── Key-press recorder ──────────────────────────────────────────────────────
+   Switches the timed key record on and off (v8). The two leftmost letters of
+   the bottom row: a pair English never rolls, well away from anything used in
+   a hurry, and the screen shows REC whenever it is on. */
+ZMK_COMBO(recorder, &rec_toggle, LB4 LB3, BASE, COMBO_TERM_FAST, COMBO_IDLE_FAST)
+
+/* ── The magic number layer ──────────────────────────────────────────────────
+   Tap both spaces at once. Numbers land on the home row, their shifted symbols
+   sit on the row above, and the home-row mods still work underneath — hold
+   instead of tap and you get Ctrl / Alt / Shift / Cmd as usual.
+
+   Tap = a num-word that ends by itself, double-tap = one sticky press, hold both
+   thumbs = the layer for as long as you hold. No idle guard, because you reach
+   for numbers straight out of a word; the press window is tight enough that an
+   ordinary double space (one thumb then the other) will not trigger it. */
+ZMK_COMBO(magicnum, &magic_num MAGIC 0, LH1 RH1, BASE, COMBO_TERM_THMB, COMBO_IDLE_NONE)

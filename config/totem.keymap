@@ -17,6 +17,7 @@
 #define MOUSE  5   // toggled by the Smart Mouse combo, exits by itself
 #define HYPER  6
 #define FN     7
+#define MAGIC  8   // both spaces at once -> numbers on the home row, symbols above
 
 #define KEYS_L LT0 LT1 LT2 LT3 LT4 LM0 LM1 LM2 LM3 LM4 LB0 LB1 LB2 LB3 LB4 LB5
 #define KEYS_R RT0 RT1 RT2 RT3 RT4 RM0 RM1 RM2 RM3 RM4 RB0 RB1 RB2 RB3 RB4 RB5
@@ -25,6 +26,11 @@
 #define ZMK_POINTING_DEFAULT_SCRL_VAL 30
 
 #define QUICK_TAP_MS 175
+
+/* Jacob's Hyper = Shift+Cmd+Ctrl (what Karabiner sends for Caps Lock on the
+   Apple keyboards). The Hyper layer mirrors that for real: every letter sends
+   the actual chord, so Mac apps hear the same shortcut from both keyboards. */
+#define HYP(key) &kp LS(LC(LG(key)))
 
 &sk {
     release-after-ms = <900>;
@@ -35,7 +41,7 @@
 
 // SmartNum's num-word: which keys keep the number layer alive (numbers + these).
 &num_word {
-    continue-list = <BACKSPACE DELETE DOT COMMA PLUS MINUS EQUAL LBKT RBKT KP_SLASH STAR>;
+    continue-list = <BACKSPACE DELETE DOT COMMA PLUS MINUS EQUAL LBKT RBKT KP_SLASH STAR FSLH>;
     ignore-numbers;
     ignore-modifiers;
 };
@@ -134,14 +140,43 @@ MAKE_HRM(hmr, &kp, &kp, KEYS_L THUMBS)
 
    Note there is deliberately NO require-prior-idle-ms here, unlike the home-row
    mods. You almost always want Shift immediately after typing something (the
-   capital in "the Totem"), so a prior-idle guard would break the common case. */
+   capital in "the Totem"), so a prior-idle guard would break the common case.
+
+   v7 — "the shift takes too long to activate". Two changes, both about latency:
+     * tapping-term 200 -> 150 ms. With "balanced" the hold is settled either by
+       the other key being released or by this timer, whichever comes first. A
+       shorter timer means a deliberate hold turns into Shift sooner, and it
+       shrinks the window in which releasing the space slightly early drops the
+       capital.
+     * quick-tap 175 -> 0 ms. Previously, holding a space within 175 ms of having
+       just tapped one gave you a second space instead of Shift, so Shift simply
+       refused to work in the moment right after a word break — which is exactly
+       when you capitalise. The cost is that you can no longer hold a space to
+       machine-gun spaces; use Tab. */
 #define MAKE_SPC(NAME, TRIGGER_POS)                                            \
   ZMK_HOLD_TAP(NAME, bindings = <&kp>, <&kp>; flavor = "balanced";             \
-               tapping-term-ms = <200>; quick-tap-ms = <QUICK_TAP_MS>;         \
+               tapping-term-ms = <150>; quick-tap-ms = <0>;                    \
                hold-trigger-key-positions = <TRIGGER_POS>;)
 
 MAKE_SPC(spcl, KEYS_R THUMBS)
 MAKE_SPC(spcr, KEYS_L THUMBS)
+
+/* ── Backspace / number pad ──────────────────────────────────────────────────
+   Left inner thumb: tap = Backspace, hold = the number pad. The point is to make
+   the pad a one-hand affair — hold Backspace with the left thumb and the digits
+   are under the same hand's fingers, no reaching across for a layer key.
+
+   Positional, restricted to the finger keys: pressing a *thumb* while this one
+   is down can only ever produce a Backspace, so the common Backspace-into-space
+   roll can't accidentally drop you onto the number pad.
+
+   Holding it on its own past the tapping term does switch layers, so press-and-
+   hold no longer repeat-deletes from cold. Tap it once first and then hold — the
+   quick-tap window makes that a held Backspace, and the OS repeats it as usual.
+   Nav's right thumb is still a plain Backspace if you want the old behaviour. */
+ZMK_HOLD_TAP(num_bspc, bindings = <&mo>, <&kp>; flavor = "balanced";
+             tapping-term-ms = <200>; quick-tap-ms = <QUICK_TAP_MS>;
+             hold-trigger-key-positions = <KEYS_L KEYS_R>;)
 
 /* Left outer pinky: tap = Escape, hold = Hyper layer. Deliberately
    "tap-preferred" rather than "balanced" so a quick tap is ALWAYS Escape, even
@@ -185,6 +220,29 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
             mods = <(MOD_LSFT)>;
         };
 
+        // T+G combo: built-in macOS dictation. The Mac is set to start
+        // dictation on "press ⌃ twice", and this sends exactly that. The
+        // 40 ms gaps keep the two presses distinct enough for macOS to count.
+        dictate_mac: dictate_mac {
+            compatible = "zmk,behavior-macro";
+            label = "DICTATE_MAC";
+            #binding-cells = <0>;
+            wait-ms = <40>;
+            tap-ms = <40>;
+            bindings = <&kp LCTRL &kp LCTRL>;
+        };
+
+        // W+F combo: tap = Undo, with Shift held = Redo. Shift must be baked
+        // into the second binding because the morph swallows the held mod.
+        undo_redo: undo_redo {
+            compatible = "zmk,behavior-mod-morph";
+            label = "UNDO_REDO";
+            bindings = <&kp LG(Z)>, <&kp LS(LG(Z))>;
+
+            #binding-cells = <0>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
         // Combo brackets: tap = ( or ), shift + tap = < or >.
         lpar_lt: lpar_lt {
             compatible = "zmk,behavior-mod-morph";
@@ -204,12 +262,36 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
+        // Same idea one row down: tap = [ or ], shift + tap = { or }. These
+        // replace the old Nav-layer-only brace combos, which sat straight on
+        // top of Nav's arrow keys and fired by accident.
+        lbkt_lbrc: lbkt_lbrc {
+            compatible = "zmk,behavior-mod-morph";
+            label = "LBKT_LBRC";
+            bindings = <&kp LBKT>, <&kp LBRC>;
+
+            #binding-cells = <0>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
+        rbkt_rbrc: rbkt_rbrc {
+            compatible = "zmk,behavior-mod-morph";
+            label = "RBKT_RBRC";
+            bindings = <&kp RBKT>, <&kp RBRC>;
+
+            #binding-cells = <0>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
         swapper: swapper {
             compatible = "zmk,behavior-tri-state";
             #binding-cells = <0>;
             bindings = <&kt LALT>, <&kp TAB>, <&kt LALT>;
 
-            ignored-key-positions = <LT2 RT2 RM1 RM2 RM3>;
+            // Keys that don't cancel the app switcher: the Nav arrows (so you
+            // can steer the window list) and both spaces (so holding Shift for
+            // a reverse cycle doesn't drop you out).
+            ignored-key-positions = <LM3 LM2 LM1 LM0 LH1 RH1>;
         };
 
         hold_sticky: hold_sticky {
@@ -226,6 +308,13 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
             label = "MAGIC_SHIFT";
             #binding-cells = <0>;
             bindings = <&hold_sticky LSHIFT LSHIFT>, <&caps_word>;
+        };
+
+        // --- Key-press recorder on/off (v8). Driver lives in config/recorder. ---
+        rec_toggle: rec_toggle {
+            compatible = "zmk,behavior-recorder-toggle";
+            #binding-cells = <0>;
+            display-name = "Recorder";
         };
 
         // --- SmartNum (spinach-style), triggered from one thumb key ---
@@ -247,6 +336,30 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
             tapping-term-ms = <200>;
             quick-tap-ms = <QUICK_TAP_MS>;
             bindings = <&mo>, <&num_dance>;
+        };
+
+        // --- Magic number layer: tap both spaces together ---
+        // Same shape as SmartNum above, but reached with the two thumbs rather
+        // than one, and it lands on a layer where the home row itself is the
+        // number row. tap = num-word (digits stay until you type something that
+        // isn't one) | double-tap = sticky for one key | hold = digits while
+        // both thumbs are down.
+        magic_dance: magic_dance {
+            compatible = "zmk,behavior-tap-dance";
+            label = "MAGIC_DANCE";
+            #binding-cells = <0>;
+            tapping-term-ms = <200>;
+            bindings = <&num_word MAGIC>, <&sl MAGIC>;
+        };
+
+        magic_num: magic_num {
+            compatible = "zmk,behavior-hold-tap";
+            label = "MAGIC_NUM";
+            #binding-cells = <2>;
+            flavor = "balanced";
+            tapping-term-ms = <200>;
+            quick-tap-ms = <QUICK_TAP_MS>;
+            bindings = <&mo>, <&magic_dance>;
         };
 
         // Smart Mouse: the F+P combo turns the mouse layer on, and it turns
@@ -283,7 +396,7 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
                 &kp Q         &kp W        &kp F          &kp P        &kp B      &kp J                    &kp L          &kp U          &kp Y         &kp SQT
                 &hml LCTRL A  &hml LALT R  &hml LSHIFT S  &hml LGUI T  &kp G      &kp M                    &hmr LGUI N    &hmr LSHIFT E  &hmr LALT I   &hmr LCTRL O
 &esc_hyper HYPER ESC  &kp Z   &kp X        &kp C          &kp D        &kp V      &kp K                    &kp H          &comma_semic   &dot_colon    &ex_que          &mo FN
-                                           &kp BSPC  &spcl LSHIFT SPACE  &lt NAV TAB   &lt SYM ENTER  &spcr LSHIFT SPACE  &smart_num NUM 0
+                             &num_bspc NUM BSPC  &spcl LSHIFT SPACE  &lt NAV TAB   &lt SYM ENTER  &spcr LSHIFT SPACE  &smart_num NUM 0
             >;
         };
 
@@ -297,27 +410,42 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
             >;
         };
 
-        // SmartNum's number layer — spinach's left-hand numpad. Left hand types the
-        // digits (1-2-3 / 4-5-6 / 7-8-9, 0 on the left thumb); right home row = your
-        // sticky mods (Cmd/Shift/Alt/Ctrl) so you can hold a modifier while the left
-        // hand taps a number. Left pinky = minus (shift gives underscore).
+        // The number pad — spinach's left-hand layout. Reached by holding
+        // Backspace on the left thumb (or by the SmartNum thumb on the right).
+        // Left hand types the digits (1-2-3 / 4-5-6 / 7-8-9); right home row =
+        // your sticky mods (Cmd/Shift/Alt/Ctrl) so you can hold a modifier while
+        // the left hand taps a number. Left pinky = minus (shift gives
+        // underscore). Zero sits on the outer pinky key — the Hyper/Escape one —
+        // because the thumb that used to carry it is now the layer key itself.
         Num {
             display-name = "Num";
             bindings = <
         &kp LBKT  &kp N1    &kp N2    &kp N3    &kp RBKT       &trans   &trans      &trans      &trans     &trans
         &kp MINUS &kp N4    &kp N5    &kp N6    &kp EQUAL      &trans   &sk LGUI    &sk LSHIFT  &sk LALT   &sk LCTRL
-&trans  &kp BSLH  &kp N7    &kp N8    &kp N9    &kp KP_SLASH   &trans   &trans      &trans      &trans     &trans     &trans
-                            &kp N0    &trans    &trans         &trans   &trans      &trans
+&kp N0  &kp BSLH  &kp N7    &kp N8    &kp N9    &kp KP_SLASH   &trans   &trans      &trans      &trans     &trans     &trans
+                            &trans    &trans    &trans         &trans   &trans      &trans
             >;
         };
 
+        // v7 — flipped to be a LEFT-hand layer. The mouse lives under the right
+        // hand, so everything you reach for while the right hand is on the mouse
+        // is now on the left: arrows on the home row, screenshots on the top row,
+        // cut/copy/paste/undo on the bottom row — cut, copy and paste kept on
+        // X, C and V so the Mac mnemonic still holds, with the clipboard history
+        // on D between copy and paste. The right hand keeps the things
+        // you only touch when both hands are on the keyboard — media, volume,
+        // scrolling, page movement, Backspace and Delete on the thumbs.
+        //
+        // Note that no combo is active on this layer any more (see combos.dtsi):
+        // with arrows sitting on the home row, the left-hand combos fired
+        // constantly by accident.
         Nav {
             display-name = "Nav";
             bindings = <
-        &swapper         &kp C_PREV  &kp C_PLAY_PAUSE  &kp C_NEXT  &kp C_VOL_UP    &kp HOME        &kp PG_DN       &kp PG_UP     &kp END          &kp PRINTSCREEN
-        &mt LGUI ESCAPE  &kp LALT    &kp LCTRL         &kp LSHIFT  &kp C_VOL_DN    &kp LEFT        &kp DOWN        &kp UP        &kp RIGHT        &trans
-&trans  &kp LG(Z)        &kp LG(X)   &kp LG(C)         &kp LG(V)   &kp C_MUTE      &msc SCRL_LEFT  &msc SCRL_DOWN  &msc SCRL_UP  &msc SCRL_RIGHT  &trans           &trans
-                                     &trans            &trans      &trans          &kp BACKSPACE   &kp DELETE      &trans
+        &swapper       &kp LG(LS(N3))  &kp LG(LS(N4))  &kp LG(LS(N5))  &kp LG(LC(LS(N4)))   &kp LC(LEFT)  &kp LC(UP)        &kp LC(RIGHT)  &kp PG_UP      &kp PG_DN
+        &kp LG(GRAVE)  &kp LEFT        &kp DOWN        &kp UP          &kp RIGHT            &kp C_PREV    &kp C_PLAY_PAUSE  &kp C_NEXT     &kp C_VOL_DN   &kp C_VOL_UP
+&trans  &undo_redo     &kp LG(X)       &kp LG(C)       &kp LG(LS(V))   &kp LG(V)            &kp C_MUTE    &msc SCRL_LEFT    &msc SCRL_DOWN &msc SCRL_UP   &msc SCRL_RIGHT  &trans
+                                       &trans          &trans          &trans               &kp BACKSPACE &kp DELETE        &trans
             >;
         };
 
@@ -347,15 +475,19 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
             >;
         };
 
-        // Held by the left outer pinky key (tap = Escape). Mirrors the
-        // Caps-Lock Hyper on Karabiner. For now: right home row N/E/I/O = arrows.
-        // Real Shift-Cmd-Ctrl chords for app shortcuts land in the next round.
+        // Held by the left outer pinky key (tap = Escape). The full mirror of
+        // the Caps-Lock Hyper on Karabiner: every letter sends the real ⇧⌘⌃
+        // chord, EXCEPT N/E/I/O which stay plain arrows — exactly as Karabiner
+        // treats them on the Apple keyboards. New Hyper shortcuts need no
+        // firmware change: assign them to any letter in the app and both
+        // keyboards pick them up. Punctuation/thumbs left transparent (letters
+        // only, by decision — grill session 31 Aug 2026).
         Hyper {
             display-name = "Hyper";
             bindings = <
-        &trans  &trans  &trans  &trans  &trans     &trans  &trans     &trans     &trans   &trans
-        &trans  &trans  &trans  &trans  &trans     &trans  &kp LEFT   &kp DOWN   &kp UP   &kp RIGHT
-&trans  &trans  &trans  &trans  &trans  &trans     &trans  &trans     &trans     &trans   &trans     &trans
+        HYP(Q)  HYP(W)  HYP(F)  HYP(P)  HYP(B)     HYP(J)  HYP(L)     HYP(U)     HYP(Y)   &trans
+        HYP(A)  HYP(R)  HYP(S)  HYP(T)  HYP(G)     HYP(M)  &kp LEFT   &kp DOWN   &kp UP   &kp RIGHT
+&trans  HYP(Z)  HYP(X)  HYP(C)  HYP(D)  HYP(V)     HYP(K)  HYP(H)     &trans     &trans   &trans     &trans
                         &trans  &trans  &trans     &trans  &trans     &trans
             >;
         };
@@ -368,6 +500,27 @@ ZMK_HOLD_TAP(esc_hyper, bindings = <&mo>, <&kp>; flavor = "tap-preferred";
         &kp F11  &kp F12  &trans   &trans   &trans     &trans   &trans   &trans   &trans   &trans
 &trans  &trans   &trans   &trans   &trans   &trans     &trans   &trans   &trans   &trans   &trans   &trans
                           &trans   &trans   &trans     &trans   &trans   &trans
+            >;
+        };
+
+        // The magic number layer — tap both spaces at once (see combos.dtsi).
+        // Digits land on the home row in typing order, 1-5 left and 6-0 right,
+        // and the matching shifted symbol sits directly above each one, exactly
+        // where a normal keyboard puts it. The home row keeps its home-row mods:
+        // tap for the digit, hold for Ctrl / Alt / Shift / Cmd as usual, so
+        // Cmd-1 to switch tabs is a hold and a tap on the same hand.
+        //
+        // It behaves like SmartNum: tap the pair for a num-word that ends the
+        // moment you type something that isn't part of a number, double-tap for
+        // one sticky key, or keep both thumbs down to hold the layer.
+        // Escape (left outer pinky) always gets you out.
+        Magic {
+            display-name = "Magic";
+            bindings = <
+        &kp EXCL       &kp AT        &kp HASH       &kp DLLR      &kp PRCNT    &kp CARET  &kp AMPS      &kp STAR       &kp LPAR      &kp RPAR
+        &hml LCTRL N1  &hml LALT N2  &hml LSHFT N3  &hml LGUI N4  &kp N5       &kp N6     &hmr LGUI N7  &hmr LSHFT N8  &hmr LALT N9  &hmr LCTRL N0
+&trans  &kp MINUS      &kp PLUS      &kp EQUAL      &kp FSLH      &kp DOT      &trans     &trans        &trans         &trans        &trans        &trans
+                                     &trans         &trans        &trans       &trans     &trans        &trans
             >;
         };
     };
