@@ -1,9 +1,11 @@
-.build
-.direnv
-.west
-modules
-firmware
-zephyr
-zmk
-draw/base.yaml
+# West-managed checkouts at the workspace root. Anchored with a leading slash so
+# they don't also swallow config/recorder/zephyr/ and config/recorder/include/zmk/.
+/.build
+/.direnv
+/.west
+/modules
+/firmware
+/zephyr
+/zmk
+/draw/base.yaml
 .DS_Store

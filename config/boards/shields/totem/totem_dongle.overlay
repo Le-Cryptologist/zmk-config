@@ -16,6 +16,7 @@
         zmk,kscan = &kscan0;
         zmk,physical-layout = &default_layout;
         zephyr,display = &oled;
+        zmk,recorder-uart = &recorder_uart;
     };
 
     default_transform: keymap_transform_0 {
@@ -107,5 +108,16 @@
         com-invdir;
         inversion-on;
         prechargep = <0x22>;
+    };
+};
+
+/*
+ * Second USB serial port, for the key-press recorder (config/recorder). The
+ * first one belongs to ZMK Studio. The Mac sees both as /dev/cu.usbmodem*; the
+ * collector tells them apart by the hello line only this one sends.
+ */
+&zephyr_udc0 {
+    recorder_uart: recorder_uart {
+        compatible = "zephyr,cdc-acm-uart";
     };
 };

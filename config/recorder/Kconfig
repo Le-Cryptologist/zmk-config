@@ -1,0 +1,15 @@
+DT_COMPAT_ZMK_BEHAVIOR_RECORDER_TOGGLE := zmk,behavior-recorder-toggle
+
+config ZMK_RECORDER
+        bool "Stream timed key events to the host over a USB serial port"
+        depends on USB_CDC_ACM && UART_LINE_CTRL
+        help
+          Writes one line per raw key press/release, emitted keycode and layer
+          change to the serial port chosen as zmk,recorder-uart. Nothing is
+          sent until recording is switched on with the toggle behavior, and
+          nothing is sent while no program on the host has the port open.
+
+config ZMK_BEHAVIOR_RECORDER_TOGGLE
+        bool
+        default $(dt_compat_enabled,$(DT_COMPAT_ZMK_BEHAVIOR_RECORDER_TOGGLE))
+        depends on ZMK_RECORDER

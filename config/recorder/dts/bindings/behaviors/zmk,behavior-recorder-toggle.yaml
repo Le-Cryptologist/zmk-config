@@ -1,0 +1,5 @@
+description: Switch the key-press recorder on or off
+
+compatible: "zmk,behavior-recorder-toggle"
+
+include: zero_param.yaml
