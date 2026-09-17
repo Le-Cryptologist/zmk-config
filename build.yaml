@@ -4,7 +4,7 @@ include:
   - board: seeeduino_xiao_ble
     shield: totem_right
   - board: nice_nano_v2
-    shield: totem_dongle dongle_display
+    shield: totem_dongle totem_display
     snippet: studio-rpc-usb-uart
   - board: seeeduino_xiao_ble
     shield: settings_reset

@@ -7,6 +7,24 @@ tailored for the Totem keyboard. It leverages the power of Nix for reproducible
 builds and automation, making it easy to manage firmware development and
 deployment.
 
+## What this fork adds
+
+Everything upstream does, plus three things of my own:
+
+- **A redesigned dongle screen** — one hand-drawn canvas showing the battery of
+  each half, the active layer, a large running line of what the keyboard has
+  actually sent, and a plain-language caption for the newest press.
+  [How it works, and how to make it speak your keymap →](config/boards/shields/totem_display/README.md)
+- **A key-press recorder** — an optional USB serial stream of timed key events
+  for analysing your own typing. Off at boot, toggled by a combo.
+  [Line format →](config/recorder/README.md)
+- **My keymap**: Hyper key, home-row mods, combos, a Bridge layer for
+  one-handed navigation and a magic number layer. See `config/totem.keymap`
+  and the diagram below.
+
+Fork away. The screen's naming tables and the keymap are the two files worth
+editing first; both are commented with that in mind.
+
 ## Table of Contents
 
 - [Nix Powered Totem ZMK Config](#nix-powered-totem-zmk-config)
