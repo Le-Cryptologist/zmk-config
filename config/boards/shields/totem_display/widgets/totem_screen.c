@@ -960,8 +960,14 @@ int zmk_widget_totem_screen_init(struct zmk_widget_totem_screen *widget, lv_obj_
     widget->obj = lv_canvas_create(parent);
     canvas = widget->obj;
     lv_canvas_set_buffer(canvas, canvas_buf, SCREEN_W, SCREEN_H, LV_IMG_CF_INDEXED_1BIT);
-    lv_canvas_set_palette(canvas, 0, lv_color_black());
-    lv_canvas_set_palette(canvas, 1, lv_color_white());
+    /* Backwards on purpose. The panel is run with `inversion-on` (see
+       totem_dongle.overlay), which is what makes LVGL's white-background theme
+       come out dark with lit text. The same inversion applies to this canvas,
+       so index 0 — the background — has to be LVGL white to end up unlit, and
+       the ink has to be LVGL black to end up lit. Get this the "right" way
+       round and the whole screen glows with dark writing on it. */
+    lv_canvas_set_palette(canvas, 0, lv_color_white());
+    lv_canvas_set_palette(canvas, 1, lv_color_black());
     lv_obj_align(canvas, LV_ALIGN_TOP_LEFT, 0, 0);
 
     render();
