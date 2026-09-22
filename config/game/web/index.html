@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Totem dongle game</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #16161a; color: #c9c9d1; font: 14px/1.4 -apple-system, "Helvetica Neue", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; margin: 0 0 18px; color: #8a8a96; }
+  .dongle { display: inline-block; padding: 22px 24px 20px; background: #2a2a30; border-radius: 14px; box-shadow: 0 20px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); }
+  canvas { display: block; width: 768px; height: 384px; background: #050507; border-radius: 3px; image-rendering: pixelated; }
+  .row { display: flex; gap: 10px; align-items: center; margin: 18px 0 0; flex-wrap: wrap; }
+  .row label { color: #8a8a96; margin-right: 4px; }
+  button { font: inherit; background: #2a2a30; color: #c9c9d1; border: 1px solid #3a3a42; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  button.on { background: #e8e8ef; color: #16161a; border-color: #e8e8ef; }
+  .stats { display: grid; grid-template-columns: repeat(6, auto); gap: 6px 22px; margin-top: 20px; font-variant-numeric: tabular-nums; }
+  .stats div { color: #8a8a96; font-size: 12px; }
+  .stats b { display: block; color: #e8e8ef; font-size: 18px; font-weight: 500; }
+  .help { margin-top: 26px; color: #8a8a96; max-width: 640px; }
+  .help code { background: #24242a; padding: 1px 5px; border-radius: 4px; color: #c9c9d1; }
+  .help p { margin: 6px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>TOTEM DONGLE — GAME BENCH</h1>
+  <div class="dongle"><canvas id="screen" width="768" height="384"></canvas></div>
+
+  <div class="row"><label>Game</label><span id="games"></span></div>
+  <div class="row"><label>Rung</label>
+    <button data-rung="1">1 · any key on that hand</button>
+    <button data-rung="2" class="on">2 · the letter</button>
+    <button data-rung="3">3 · chord</button>
+    <button id="restart">Restart</button>
+  </div>
+
+  <div class="stats">
+    <div>Score<b id="s0">0</b></div>
+    <div>Hits<b id="s1">0</b></div>
+    <div>Misses<b id="s2">0</b></div>
+    <div>Streak<b id="s3">0</b></div>
+    <div>Best<b id="s4">0</b></div>
+    <div>Time<b id="s8">0.0s</b></div>
+  </div>
+
+  <div class="help">
+    <p>Click the page so it has focus, then play with the Totem. The prompt in the bottom-left corner moves you left; the one in the bottom-right moves you right. Anything else is a miss.</p>
+    <p>Chord marks: <code>^</code> Ctrl &nbsp;<code>~</code> Alt &nbsp;<code>+</code> Shift &nbsp;<code>*</code> Gui. The browser can't take Gui chords without triggering its own shortcuts, so rung 3 here uses the other three. Keys <code>1</code> <code>2</code> <code>3</code> switch game, <code>F1</code>–<code>F3</code> switch rung, <code>Enter</code> restarts.</p>
+    <p>The screen is the dongle's exact 128×64 framebuffer, scaled six times. What you see here is what the dongle will draw.</p>
+  </div>
+</main>
+
+<script src="game.js"></script>
+<script>
+const W = 128, H = 64, PX = 6;
+const MOD = { CTRL: 1, ALT: 2, SHIFT: 4, GUI: 8 };
+const POOL = MOD.CTRL | MOD.ALT | MOD.SHIFT;
+
+createGame().then(M => {
+  window.game = M; // handy from the console: game._web_stat(0), game.UTF8ToString(game._web_prompt(0))
+  const cv = document.getElementById('screen');
+  const cx = cv.getContext('2d');
+  const games = document.getElementById('games');
+  let which = 0, rung = 2, wantExit = false;
+
+  const name = i => M.UTF8ToString(M._web_game_name(i));
+  const n = M._web_game_count();
+  for (let i = 0; i < n; i++) {
+    const b = document.createElement('button');
+    b.textContent = (i + 1) + ' · ' + name(i);
+    b.dataset.game = i;
+    b.onclick = () => pick(i);
+    games.appendChild(b);
+  }
+
+  const now = () => performance.now() >>> 0;
+  function start() {
+    wantExit = false;
+    M._web_start(which, rung, now(), (Math.random() * 0xffffffff) >>> 0, POOL);
+    document.querySelectorAll('[data-game]').forEach(b => b.classList.toggle('on', +b.dataset.game === which));
+    document.querySelectorAll('[data-rung]').forEach(b => b.classList.toggle('on', +b.dataset.rung === rung));
+  }
+  function pick(i) { which = i; start(); }
+  document.querySelectorAll('[data-rung]').forEach(b => b.onclick = () => { rung = +b.dataset.rung; start(); });
+  document.getElementById('restart').onclick = start;
+
+  window.addEventListener('keydown', e => {
+    if (e.repeat) return;
+    if (e.key >= '1' && e.key <= String(n)) { pick(+e.key - 1); e.preventDefault(); return; }
+    if (e.key === 'F1' || e.key === 'F2' || e.key === 'F3') { rung = +e.key[1]; start(); e.preventDefault(); return; }
+    if (e.key === 'Enter') { start(); e.preventDefault(); return; }
+    if (wantExit) return;
+
+    const m = e.code.match(/^Key([A-Z])$/);
+    if (!m) return;
+    const ch = m[1].charCodeAt(0);
+    const half = M._web_char_half(ch);
+    if (half < 0) return;
+    if (e.metaKey) return; // leave the browser's own shortcuts alone
+    const mods = (e.ctrlKey ? MOD.CTRL : 0) | (e.altKey ? MOD.ALT : 0) | (e.shiftKey ? MOD.SHIFT : 0);
+    M._web_key(now(), half, ch, mods);
+    e.preventDefault();
+  });
+
+  function frame() {
+    if (!wantExit && M._web_tick(now())) wantExit = true;
+    const p = M._web_draw();
+    const bits = M.HEAPU8.subarray(p, p + W * H / 8);
+
+    cx.fillStyle = '#050507';
+    cx.fillRect(0, 0, cv.width, cv.height);
+    cx.fillStyle = '#f2f5ff';
+    for (let y = 0; y < H; y++) {
+      for (let bx = 0; bx < W / 8; bx++) {
+        const b = bits[y * 16 + bx];
+        if (!b) continue;
+        for (let i = 0; i < 8; i++) {
+          if (b & (0x80 >> i)) cx.fillRect((bx * 8 + i) * PX, y * PX, PX - 1, PX - 1);
+        }
+      }
+    }
+    if (wantExit) {
+      cx.fillStyle = 'rgba(5,5,7,.85)';
+      cx.fillRect(0, 0, cv.width, cv.height);
+      cx.fillStyle = '#8a8a96';
+      cx.font = '20px -apple-system, sans-serif';
+      cx.textAlign = 'center';
+      cx.fillText('idle — left game mode. Enter to restart.', cv.width / 2, cv.height / 2);
+    }
+
+    for (const i of [0, 1, 2, 3, 4]) document.getElementById('s' + i).textContent = M._web_stat(i);
+    document.getElementById('s8').textContent = (M._web_stat(8) / 1000).toFixed(1) + 's';
+    requestAnimationFrame(frame);
+  }
+
+  start();
+  requestAnimationFrame(frame);
+});
+</script>
+</body>
+</html>
